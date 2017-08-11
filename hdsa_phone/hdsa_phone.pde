@@ -9,6 +9,7 @@ long prevTrigger;
 String received = "";
 String receivedComplete = "";
 String textReceived = "";
+String sendBuffer = "";
 int currentBrightness = 0;
 
 boolean sendMode = false;
@@ -51,8 +52,10 @@ void setup() {
   //size(displayWidth, displayHeight);
   fullScreen();
   orientation(PORTRAIT);
+  
   cam = new KetaiCamera(this, 320, 240, 24);
   cam.start();
+  
   fill(255, 0, 0);
   textSize(48);
   //println("displayWidth: " + displayWidth);
@@ -112,6 +115,8 @@ void draw() {
     rect(displayWidth/2-20, displayHeight/2-20, 40, 40);
     //println("center? " + displayWidth/2 + ", " + displayHeight/2);
     //println(mouseX + ", " + mouseY);
+    
+    
     fill(0);
     text(currentBrightness, 10, 50); 
     text("Received:", 10, 100); 
@@ -130,6 +135,18 @@ void draw() {
       text(char(unbinary(receivedComplete)), 10-2, 200-2);
     }
     text(textReceived, 10-2, 250-2);
+    
+    // Draw send buffer - JBG
+    if(sendMode) {
+      fill(0);
+      text(currentBrightness, 10, 50); 
+      text("Send:", 10, 300); 
+      text(sendBuffer, 350, 300);
+      fill(255);
+      text(currentBrightness, 10-2, 50-2); 
+      text("Send:", 10-2, 300-2); 
+      text(sendBuffer, 350-2, 300-2);
+    }
 
     // Draw mode rect - JBG
     rect(displayWidth-100, 0, 100, 100);
@@ -161,13 +178,14 @@ void mousePressed() {
   }
 }
 
-String sendBuffer = "";
 void keyPressed() {
-  println("Key code pressed: " + key);
+  println("Key code pressed: " + int(key));
   if(key == ENTER) {
     println("SEND!!!");
     transmit(sendBuffer);
     sendBuffer = "";
+  } else if(int(key) == 65535 && sendBuffer.length() > 0) {
+    sendBuffer = sendBuffer.substring(0, sendBuffer.length() - 1);
   } else {
     sendBuffer += str(char(key));
     println("Send buffer: " + sendBuffer);
@@ -192,5 +210,7 @@ public void onPause() {
   } else {
     println("cam is null onPause");
   }
+  hideVirtualKeyboard();
+  cam.disableFlash();
   super.onPause();
 }
