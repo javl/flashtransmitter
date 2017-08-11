@@ -2,6 +2,13 @@ import ketai.camera.*;
 import android.view.inputmethod.InputMethodManager;
 import android.content.Context;
 
+import android.os.PowerManager;
+import android.os.PowerManager.WakeLock;
+import android.content.Context;
+
+PowerManager pm;
+WakeLock wl;
+
 KetaiCamera cam;
 
 boolean ledStatus = false;
@@ -17,7 +24,6 @@ boolean sendMode = false;
 void showVirtualKeyboard() {
   InputMethodManager imm = (InputMethodManager) getActivity().getSystemService(Context.INPUT_METHOD_SERVICE);
   imm.toggleSoftInput(InputMethodManager.SHOW_FORCED, 0);
- 
 }
 
 void hideVirtualKeyboard() {
@@ -27,58 +33,49 @@ void hideVirtualKeyboard() {
 
 void transmit(String msg) {
   boolean flashState = true;
-  for (char c: msg.toCharArray()) {
+  for (char c : msg.toCharArray()) {
     String binStr = binary(c);
     println("Binary string: " + binStr);
-    for (char bc: binStr.toCharArray()) {
+    for (char bc : binStr.toCharArray()) {
       println("BC: " + bc);
-      if(flashState) cam.enableFlash();
+      if (flashState) cam.enableFlash();
       else cam.disableFlash();
       flashState = !flashState;
-      if(bc == '1') {
+      if (bc == '1') {
         delay(1500);
       } else {
         delay(1000);
       }
     }
   }
-  if(flashState) cam.enableFlash();
+  if (flashState) cam.enableFlash();
   else cam.disableFlash();
   flashState = !flashState;
   delay(5000);
 }
 
-void setup() {
-  //size(displayWidth, displayHeight);
+void setup() {  
+  pm = (PowerManager) getActivity().getSystemService(Context.POWER_SERVICE);
+  wl = pm.newWakeLock(128, "My Tag"); // 128 = FLAG_KEEP_SCREEN_ON
+  wl.acquire();
+
   fullScreen();
   orientation(PORTRAIT);
-  
+
   cam = new KetaiCamera(this, 320, 240, 24);
   cam.start();
-  
+
   fill(255, 0, 0);
   textSize(48);
-  //println("displayWidth: " + displayWidth);
-  //println("displayheight: " + displayHeight);
 }
 
 void draw() {
   background(0);
   if (cam !=null) {
-    //pushMatrix();
-    //rotate(-PI/2.0);
     rotate(PI/2.0);
     image(cam, 0, -displayWidth, displayHeight, displayWidth);
     rotate(-PI/2.0);
-    //color c = get(displayHeight/2, displayWidth/2);
-    //color c = color(255, 0, 0);
     fill(255, 0, 0);
-    //int combinedBrightness = 0;
-    //for(int i=0;i<5;i++){
-    //for(int k=0;k<5;k++){
-    //combinedBrightness += brightness(cam.get((cam.width/2)+i, (cam.height/2))
-    //}
-    //}
     color c = cam.get(cam.width/2, cam.height/2);
     fill(c);
     //println(brightness(c));
@@ -103,20 +100,11 @@ void draw() {
         received = "";
       }
       prevTrigger = now;
-      if (newLedStatus) {
-        //println("ON!");
-      } else {
-        //println("OFF!");
-      }
-      println("switch after " + (timeDiff/1000.0));
       ledStatus = newLedStatus;
     }
     noStroke();
     rect(displayWidth/2-20, displayHeight/2-20, 40, 40);
-    //println("center? " + displayWidth/2 + ", " + displayHeight/2);
-    //println(mouseX + ", " + mouseY);
-    
-    
+
     fill(0);
     text(currentBrightness, 10, 50); 
     text("Received:", 10, 100); 
@@ -135,9 +123,9 @@ void draw() {
       text(char(unbinary(receivedComplete)), 10-2, 200-2);
     }
     text(textReceived, 10-2, 250-2);
-    
+
     // Draw send buffer - JBG
-    if(sendMode) {
+    if (sendMode) {
       fill(0);
       text(currentBrightness, 10, 50); 
       text("Send:", 10, 300); 
@@ -158,16 +146,10 @@ void onCameraPreviewEvent() {
 }
 
 void mousePressed() {
-  //println("mouse pressed");
-  //if (cam.isFlashEnabled())
-  //cam.disableFlash();
-  //else
-  //cam.enableFlash();
-  //}
-  if(mouseX > displayWidth-100 && mouseY < 100) {
+  if (mouseX > displayWidth-100 && mouseY < 100) {
     sendMode = !sendMode;
     println("toggle mode: " + (sendMode ? "Sending" : "Receiving"));
-    if(sendMode) {
+    if (sendMode) {
       showVirtualKeyboard();
     } else {
       hideVirtualKeyboard();
@@ -180,11 +162,11 @@ void mousePressed() {
 
 void keyPressed() {
   println("Key code pressed: " + int(key));
-  if(key == ENTER) {
+  if (key == ENTER) {
     println("SEND!!!");
     transmit(sendBuffer);
     sendBuffer = "";
-  } else if(int(key) == 65535 && sendBuffer.length() > 0) {
+  } else if (int(key) == 65535 && sendBuffer.length() > 0) {
     sendBuffer = sendBuffer.substring(0, sendBuffer.length() - 1);
   } else {
     sendBuffer += str(char(key));
@@ -195,22 +177,26 @@ void keyPressed() {
 public void onResume() {
   super.onResume();
   if (cam != null) {
-    //cam.resume();
     cam.start();
-    println("cam is not null onResume");
-  } else {
-    println("cam is null onResume");
+  }
+  if (wl != null) {
+    if (!wl.isHeld()) {
+      wl.acquire();
+    }
   }
 } 
 public void onPause() {
   if (cam != null) {
-    //cam.pause();
     cam.stop();
-    println("cam is not null onPause");
-  } else {
-    println("cam is null onPause");
   }
   hideVirtualKeyboard();
   cam.disableFlash();
+  
+  if (wl != null) {
+    if (wl.isHeld()) {
+      wl.release();
+    }
+  }
+  
   super.onPause();
 }
