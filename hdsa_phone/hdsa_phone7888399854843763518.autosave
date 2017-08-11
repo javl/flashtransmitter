@@ -91,6 +91,8 @@ void draw() {
       text(char(unbinary(receivedComplete)), 10-2, 200-2);
     }
     text(textReceived, 10-2, 250-2);
+    
+    // Draw m(
   }
 }
 
